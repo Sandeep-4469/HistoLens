@@ -5,11 +5,6 @@ import ollama
 from sentence_transformers import SentenceTransformer, util
 import torch
 
-# SOLVED: The prompt is refined to ensure the model generates the full text,
-# including the persona ("Point of View"), not just the JSON block.
-# - A new, explicit rule (Rule 2) was added to force the model to start
-#   its output with the persona/instructional text.
-# - The other rules were rephrased for maximum clarity.
 META_PROMPT_TEMPLATE = """You are an expert assistant for pathologists. Your task is to convert a user's simple, vague query into a highly-structured, professional prompt suitable for a Vision-Language Model (VLM) that analyzes histopathology images.
 
 You must adhere to the following rules:
