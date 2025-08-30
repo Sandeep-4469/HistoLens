@@ -5,35 +5,48 @@ import ollama
 from sentence_transformers import SentenceTransformer, util
 import torch
 
-META_PROMPT_TEMPLATE = """You are an expert assistant for pathologists. Your task is to convert a user's simple, vague query into a highly-structured, professional prompt suitable for a Vision-Language Model (VLM) that analyzes histopathology images.
+META_PROMPT_TEMPLATE = """You are an expert pathology assistant specializing in histopathology image interpretation. 
+Your task is to transform a vague user query into a structured, professional prompt suitable for a Vision-Language Model (VLM) 
+that analyzes histopathology images.
 
-You must adhere to the following rules:
-1.  The final output MUST be ONLY the complete generated prompt. Do not include any preamble, apologies, or explanations like "Here is the prompt:".
-2.  The generated prompt MUST begin with a persona and instructions for the VLM (e.g., "You are a pathology assistant...").
-3.  The prompt MUST end with a JSON structure, which is preceded by the word 'json' on a new line, as shown in the example.
-4.  Infer the correct JSON schema and parameters based on the user's query and the provided example.
+Follow these rules strictly:
+1. The final output MUST be ONLY the generated prompt. Do not include any preamble, comments, or explanations.
+2. The generated prompt MUST begin with a persona statement and clear instructions for the VLM (e.g., "You are a pathology assistant...").
+3. The generated prompt MUST end with a JSON schema, preceded by the word 'json' on its own line.
+4. Infer the appropriate JSON fields, data types, and constraints from the user query. Use pathology-specific terminology.
+5. The "report" field MUST summarize findings in pathology-style prose and MUST NOT repeat field names.
+6. If the query specifies a stain or marker, include it in the JSON (e.g., "stain_type": "PDL1").
+7. If the query references cell types, ensure they are explicitly noted, only TUMOR CELLS not IMMUNE CELLS
+8. Always include staining intensity (graded 1–3 and 0 if not stain), and cell counts if relevant.
+9. Always include an "explanation" field, describing the reasoning behind the interpretation (e.g., staining pattern, distribution, morphology).
+10. stain name is given by the USER
 ---
-EXAMPLE 1:
+EXAMPLE:
 User's Vague Query: "check for pdl1 staining intensity on immune cells"
 
 Your Generated Prompt:
-You are a pathology assistant specialized in analyzing stained histopathology images, including PDL1 staining evaluation.
+You are a pathology assistant specialized in analyzing stained histopathology images, including PDL1 immunohistochemistry.
 Please analyze the provided image and return your findings in the following JSON format:
-NOTE - Tumor cells are lightly stained and immune cells are heavily stained. Base the staining_intensity_grade on this. Be careful to differentiate brain cells.
+Note – Tumor cells may appear lightly stained while immune cells may appear heavily stained. Ensure accurate distinction. 
+Be careful to exclude non-relevant brain parenchymal cells if present.
+9. Regarding staining Location, central structure is NUCLEAR, outer part is CYTOPLASM and outline of the cytoplasm is MEMBRANE. FOR Ki-67
+10. For PDL-1 stain, regarding the staining location, mostly CYTOPLASM and this PDL-1 cannot stain the NUCLEUS
 json
 {{
   "stain_type": "PDL1",
-  "number_of_cells_stained": "integer",
-  "type_of_cells_stained": "immune cells",
-  "staining_location_per_cell": "cytoplasmic or surface membrane or both",
-  "staining_intensity_grade": "integer (0-3)",
-  "report": "A detailed pathology-style report summarizing the observed PDL1 staining pattern on immune cells, including distribution, location, and intensity. Avoid repeating field names."
+  "percentage_of_cells_stained": "0-100",
+  "type_of_cells_stained": "tumor cells",
+  "staining_location_per_cell": "nuclear or cytoplasmic or membrane or both",
+  "staining_intensity_grade": "integer (1–3)",
+  "report": "Detailed pathology report summarizing PDL1 staining pattern on Tumor cells, including distribution, staining location, and intensity.",
+  "explanation": "Explain why these findings were made, referencing staining characteristics, cell morphology, and tissue context."
 }}
 ---
 
 User's Vague Query: "{user_query}"
 
 Your Generated Prompt:"""
+
 
 
 @st.cache_data(show_spinner=False)
